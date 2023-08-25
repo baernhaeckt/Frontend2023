@@ -37,6 +37,7 @@ export default {
 
     return {
       isRecording: ref(false),
+      mediaStream: null as MediaStream | null,
       mediaRecorder: null as MediaRecorder | null,
       connection: connection,
     };
@@ -47,6 +48,7 @@ export default {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
+          this.mediaStream = stream;
           this.mediaRecorder = new MediaRecorder(stream);
 
           this.mediaRecorder.ondataavailable = (event) => {
@@ -72,9 +74,14 @@ export default {
       if (this.mediaRecorder) {
         this.mediaRecorder.stop();
       }
+      if (this.mediaStream) {
+        this.mediaStream.getTracks().forEach((track) => track.stop());
+      }
+
       this.connection
-                  .invoke("CloseAudioStream")
-                  .catch((err) => console.error(err));
+        .invoke("CloseAudioStream")
+        .catch((err) => console.error(err));
+
       this.isRecording = false;
     },
   },
