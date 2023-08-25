@@ -24,7 +24,7 @@ export default {
   name: "HomeView",
   setup() {
     const connection = new HubConnectionBuilder()
-      .withUrl(`${baseUrl}/chatHub`)
+      .withUrl(`${baseUrl}/audiohub`)
       .build();
 
     // Start the connection
@@ -32,11 +32,6 @@ export default {
       .start()
       .then(() => {
         console.log("Connection started!");
-
-        // Invoke a hub method to send a message
-        connection
-          .invoke("SendMessage", "Hello from client!")
-          .catch((err) => console.error(`Error while sending message: ${err}`));
       })
       .catch((err) => console.error(`Error while starting connection: ${err}`));
 
@@ -60,7 +55,7 @@ export default {
               if (reader.readyState === 2) {
                 const arrayBuffer = reader.result;
                 this.connection
-                  .invoke("ReceiveAudio", arrayBuffer)
+                  .invoke("TransmitUserAudio", arrayBuffer)
                   .catch((err) => console.error(err));
               }
             };
@@ -77,6 +72,9 @@ export default {
       if (this.mediaRecorder) {
         this.mediaRecorder.stop();
       }
+      this.connection
+                  .invoke("CloseAudioStream")
+                  .catch((err) => console.error(err));
       this.isRecording = false;
     },
   },
