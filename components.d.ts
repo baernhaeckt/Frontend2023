@@ -7,10 +7,14 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AvatarSelection: typeof import('./src/components/AvatarSelection.vue')['default']
     BButton: typeof import('bootstrap-vue-next')['BButton']
     BCol: typeof import('bootstrap-vue-next')['BCol']
     BContainer: typeof import('bootstrap-vue-next')['BContainer']
     BRow: typeof import('bootstrap-vue-next')['BRow']
+    BSpinner: typeof import('bootstrap-vue-next')['BSpinner']
+    Chat: typeof import('./src/components/Chat.vue')['default']
+    Loader: typeof import('./src/components/Loader.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
