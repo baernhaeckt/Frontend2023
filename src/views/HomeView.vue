@@ -1,5 +1,5 @@
 <template>
-  <BContainer fluid class="d-flex flex-column min-vh-100">
+  <BContainer fluid class="d-flex flex-column min-vh-100" id="ChatContainer">
     <BRow class="flex-grow-1">
       <BCol class="pt-3">
         <div class="messages border rounded-3 px-3">
@@ -80,6 +80,13 @@ export default {
 
       messages,
     };
+  },
+  mounted() {
+    const chatContainer = document.getElementById("ChatContainer");
+    if (chatContainer) {
+      // set container height to explicit window height
+      chatContainer.style.height = `${window.innerHeight}px`;
+    }
   },
   methods: {
     startRecording() {
