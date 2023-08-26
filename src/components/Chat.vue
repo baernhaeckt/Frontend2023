@@ -1,13 +1,17 @@
 <template>
   <BContainer fluid class="d-flex flex-column min-vh-100" id="ChatContainer">
+    <BRow class="flex-shrink-1">
+      <BCol class="pt-3 avatar-display">
+        <div class="avatar border rounded-3 px-3 d-flex justify-content-center">
+          <img :src="avatar" class="rounded-3 flex-grow-0" alt="Dein Avatar" />
+          <BButton variant="light" class="modify-avatar" @click="modifyAvatar">Avatar bearbeiten</BButton>
+        </div>
+      </BCol>
+    </BRow>
     <BRow class="flex-grow-1">
       <BCol class="pt-3">
         <div class="messages border rounded-3 px-3">
-          <div
-            v-for="(message, index) in messages"
-            :key="index"
-            :class="message.source"
-          >
+          <div v-for="(message, index) in messages" :key="index" :class="message.source">
             <div class="message-box">
               {{ message.text }}
             </div>
@@ -19,24 +23,8 @@
       <BCol>
         <div class="input-message border rounded-3 p-3">
           <audio id="audio" controls></audio>
-          <BButton
-            class="w-100"
-            variant="primary"
-            size="lg"
-            v-if="!isRecording"
-            @click="startRecording"
-          >
-            Drücke zum sprechen...
-          </BButton>
-          <BButton
-            class="w-100"
-            variant="secondary"
-            size="lg"
-            v-if="isRecording"
-            @click="stopRecording"
-          >
-            Drücke um Nachricht abzusenden...
-          </BButton>
+          <BButton class="w-100" variant="primary" size="lg" v-if="!isRecording" @click="startRecording"> Drücke zum sprechen... </BButton>
+          <BButton class="w-100" variant="secondary" size="lg" v-if="isRecording" @click="stopRecording"> Drücke um Nachricht abzusenden... </BButton>
         </div>
       </BCol>
     </BRow>
@@ -44,19 +32,19 @@
 </template>
 
 <script lang="ts">
-import {
-  HubConnectionBuilder,
-  type IHttpConnectionOptions,
-} from "@microsoft/signalr";
+import { HubConnectionBuilder, type IHttpConnectionOptions } from "@microsoft/signalr";
+import { storeToRefs, type Store } from "pinia";
+import { useStore } from "../stores/settings-store";
 import { ref } from "vue";
 const baseUrl = import.meta.env.VITE_SERVICES_BASEURL;
 
 export default {
   name: "Chat",
   setup() {
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${baseUrl}/audiohub`)
-      .build();
+    const settingsStore = useStore();
+    const { settings } = storeToRefs(settingsStore);
+
+    const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
 
     const messages = ref([
       { text: "Hello!", source: "avatar" },
@@ -91,13 +79,13 @@ export default {
           audio.src = URL.createObjectURL(audioBlob);
           audio.play();
         });
-        connection
-          .invoke("Handshake", "started")
-          .catch((err) => console.error(err));
+        connection.invoke("Handshake", "started").catch((err) => console.error(err));
       })
       .catch((err) => console.error(`Error while starting connection: ${err}`));
 
     return {
+      avatar: settings.value.avatar,
+
       isRecording: ref(false),
       mediaStream: null as MediaStream | null,
       isClosing: ref(false),
@@ -131,22 +119,16 @@ export default {
             reader.onload = () => {
               if (reader.readyState === 2) {
                 const uint8Array = new Uint8Array(reader.result as ArrayBuffer);
-                const base64String = btoa(
-                  String.fromCharCode.apply(null, uint8Array)
-                );
+                const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
 
-                this.connection
-                  .invoke("TransmitUserAudio", base64String)
-                  .catch((err) => console.error(err));
+                this.connection.invoke("TransmitUserAudio", base64String).catch((err) => console.error(err));
               }
 
               if (this.isClosing) {
                 this.isClosed = true;
                 this.isRecording = false;
 
-                this.connection
-                  .invoke("CloseAudioStream")
-                  .catch((err) => console.error(err));
+                this.connection.invoke("CloseAudioStream").catch((err) => console.error(err));
                 this.mediaRecorder = null;
               }
             };
@@ -170,11 +152,25 @@ export default {
         this.mediaStream.getTracks().forEach((track) => track.stop());
       }
     },
+    modifyAvatar() {
+      this.$emit("edit-avatar");
+    },
   },
 };
 </script>
 
 <style lang="scss">
+.avatar-display {
+  img {
+    max-height: 30vh;
+  }
+
+  .modify-avatar {
+    position: absolute;
+    top: 25px;
+    right: 25px;
+  }
+}
 .messages {
   height: 100%;
   max-height: 100%;

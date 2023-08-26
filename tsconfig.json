@@ -1,6 +1,6 @@
 {
   "files": [],
-  "include": ["components.d.ts"],
+  "include": ["components.d.ts", "src/**/*", "src/**/*.vue"],
   "references": [
     {
       "path": "./tsconfig.node.json"
