@@ -6,7 +6,7 @@
 <script lang="ts">
 import { storeToRefs } from "pinia";
 import { useStore } from "../stores/settings-store";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 
 export default {
   name: "HomeView",
@@ -14,24 +14,34 @@ export default {
     const settingsStore = useStore();
     const { settings } = storeToRefs(settingsStore);
 
+    const avatarSetupCompleted = ref(settings.value.avatarSetupCompleted);
+    const loadChat = ref(avatarSetupCompleted.value);
+
     return {
       settingsStore,
+      settings,
 
       avatar: settings.value.avatar,
-      isLoading: ref(true),
-      avatarInitialized: computed(() => settings.value.avatar && settings.value.avatar.length > 0),
-      avatarSetupCompleted: ref(false),
-      loadChat: ref(false),
+      avatarSetupCompleted,
+      loadChat,
     };
   },
   methods: {
     setSetupCompleted() {
       this.avatarSetupCompleted = true;
       this.loadChat = true;
+
+      this.settingsStore.updateSettings({
+        avatarSetupCompleted: true,
+      });
     },
     editAvatar() {
       this.avatarSetupCompleted = false;
       this.loadChat = false;
+
+      this.settingsStore.updateSettings({
+        avatarSetupCompleted: true,
+      });
     },
   },
 };

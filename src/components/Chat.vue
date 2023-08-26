@@ -4,16 +4,31 @@
       <BCol class="pt-3 avatar-display">
         <div class="avatar border rounded-3 px-3 d-flex justify-content-center">
           <img :src="avatar" class="rounded-3 flex-grow-0" alt="Dein Avatar" />
-          <BButton variant="light" class="modify-avatar" @click="modifyAvatar">Avatar bearbeiten</BButton>
+          <BButton variant="light" size="lg" class="modify-avatar" @click="modifyAvatar"><i-mdi-cog class="mb-1" /></BButton>
         </div>
       </BCol>
     </BRow>
-    <BRow class="flex-grow-1">
+    <BRow class="messages-container flex-grow-1">
       <BCol class="pt-3">
         <div class="messages border rounded-3 px-3">
           <div v-for="(message, index) in messages" :key="index" :class="message.source">
             <div class="message-box">
               {{ message.text }}
+              <template v-if="message.audio">
+                <hr />
+                <audio controls :id="`MessageAudio${message.messageId}`">
+                  <source :src="getAudioSource(message)" type="audio/wav" />
+                </audio>
+              </template>
+            </div>
+          </div>
+          <div class="avatar" v-if="isLoadingMessage">
+            <div class="message-box">
+              <div class="loader">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -21,10 +36,23 @@
     </BRow>
     <BRow class="flex-shrink-0">
       <BCol>
-        <div class="input-message border rounded-3 p-3">
-          <audio id="audio" controls></audio>
-          <BButton class="w-100" variant="primary" size="lg" v-if="!isRecording" @click="startRecording"> Drücke zum sprechen... </BButton>
-          <BButton class="w-100" variant="secondary" size="lg" v-if="isRecording" @click="stopRecording"> Drücke um Nachricht abzusenden... </BButton>
+        <div class="input-message border rounded-3 p-3 d-flex flex-row">
+          <BButton class="flex-shrink-0 me-2" :disabled="isLoadingMessage" variant="danger" size="lg" @click="clearChats">
+            <i-mdi-trash-can-outline class="mb-1" /> <span class="d-none d-md-inline">Alle Nachrichten löschen</span>
+          </BButton>
+          <BButton
+            class="flex-grow-1"
+            :disabled="isLoadingMessage"
+            variant="primary"
+            size="lg"
+            v-if="!isRecording && !isLoadingMessage"
+            @click="startRecording"
+          >
+            Drücke zum sprechen...
+          </BButton>
+          <BButton class="flex-grow-1" :disabled="isLoadingMessage" variant="secondary" size="lg" v-if="isRecording || isLoadingMessage" @click="stopRecording">
+            Drücke um Nachricht abzusenden...
+          </BButton>
         </div>
       </BCol>
     </BRow>
@@ -35,23 +63,32 @@
 import { HubConnectionBuilder, type IHttpConnectionOptions } from "@microsoft/signalr";
 import { storeToRefs, type Store } from "pinia";
 import { useStore } from "../stores/settings-store";
-import { ref } from "vue";
+import { useMessagesStore } from "../stores/messages-store";
+import { Ref, nextTick, ref } from "vue";
+import { MessageModel } from "../models/message-model";
 const baseUrl = import.meta.env.VITE_SERVICES_BASEURL;
 
 export default {
   name: "Chat",
   setup() {
     const settingsStore = useStore();
+    const messagesStore = useMessagesStore();
     const { settings } = storeToRefs(settingsStore);
 
-    const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
+    function playAudio(audioId) {
+      const timer = setInterval(() => {
+        const audioElement = document.getElementById(`MessageAudio${audioId}`) as HTMLAudioElement;
+        if (audioElement) {
+          audioElement.scrollIntoView();
+          audioElement.play();
+          clearInterval(timer);
+        }
+      }, 125);
+    }
 
-    const messages = ref([
-      { text: "Hello!", source: "avatar" },
-      { text: "Hi there!", source: "own" },
-      { text: "How are you?", source: "avatar" },
-      { text: "I'm fine, thanks!", source: "own" },
-    ]);
+    const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
+    const messages: Ref<MessageModel[]> = ref([...messagesStore.messages]);
+    const isLoadingMessage = ref(false);
 
     // Start the connection
     connection
@@ -63,29 +100,43 @@ export default {
         });
         connection.on("audioResponse", (response) => {
           console.log(response);
-          var audio = document.getElementById("audio") as HTMLAudioElement;
 
-          if (!audio) {
-            return;
-          }
+          const ownMessageId = messages.value.length;
+          const avatarMessageId = ownMessageId + 1;
 
-          var binaryAudioData = atob(response.base64EncodedMp3);
-          var uint8AudioData = new Uint8Array(binaryAudioData.length);
-          for (var i = 0; i < binaryAudioData.length; i++) {
-            uint8AudioData[i] = binaryAudioData.charCodeAt(i);
-          }
+          const ownMessage: MessageModel = {
+            messageId: ownMessageId,
+            text: response.understoodText,
+            source: "own",
+            timestamp: new Date(),
+          };
+          const avatarMessage: MessageModel = {
+            messageId: avatarMessageId,
+            text: response.answerText,
+            source: "avatar",
+            audio: response.base64EncodedMp3,
+            timestamp: new Date(),
+          };
 
-          var audioBlob = new Blob([uint8AudioData], { type: "audio/wav" });
-          audio.src = URL.createObjectURL(audioBlob);
-          audio.play();
+          messages.value.push(ownMessage);
+          messages.value.push(avatarMessage);
+
+          messagesStore.pushMessage(ownMessage);
+          messagesStore.pushMessage(avatarMessage);
+
+          playAudio(avatarMessageId);
+          isLoadingMessage.value = false;
         });
         connection.invoke("Handshake", "started").catch((err) => console.error(err));
       })
       .catch((err) => console.error(`Error while starting connection: ${err}`));
 
     return {
+      messagesStore,
+
       avatar: settings.value.avatar,
 
+      isInit: ref(true),
       isRecording: ref(false),
       mediaStream: null as MediaStream | null,
       isClosing: ref(false),
@@ -93,17 +144,15 @@ export default {
       mediaRecorder: null as MediaRecorder | null,
       connection: connection,
       messages,
+      isLoadingMessage,
     };
   },
   mounted() {
-    const chatContainer = document.getElementById("ChatContainer");
-    if (chatContainer) {
-      // set container height to explicit window height
-      chatContainer.style.height = `${window.innerHeight}px`;
-    }
+    this.scrollMessageViewToBottom();
   },
   methods: {
     startRecording() {
+      this.isInit = false;
       this.isRecording = true;
       this.isClosing = false;
       this.isClosed = false;
@@ -121,15 +170,21 @@ export default {
                 const uint8Array = new Uint8Array(reader.result as ArrayBuffer);
                 const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
 
-                this.connection.invoke("TransmitUserAudio", base64String).catch((err) => console.error(err));
-              }
+                this.connection
+                  .invoke("TransmitUserAudio", base64String)
+                  .catch((err) => console.error(err))
+                  .then(() => {
+                    if (this.isClosing) {
+                      this.isClosed = true;
+                      this.isRecording = false;
 
-              if (this.isClosing) {
-                this.isClosed = true;
-                this.isRecording = false;
+                      this.connection.invoke("CloseAudioStream").catch((err) => console.error(err));
 
-                this.connection.invoke("CloseAudioStream").catch((err) => console.error(err));
-                this.mediaRecorder = null;
+                      this.mediaRecorder = null;
+                      this.isLoadingMessage = true;
+                      this.scrollMessageViewToBottom();
+                    }
+                  });
               }
             };
             reader.readAsArrayBuffer(event.data);
@@ -155,6 +210,40 @@ export default {
     modifyAvatar() {
       this.$emit("edit-avatar");
     },
+    audioChanged(e) {
+      console.log("audio changed", e);
+    },
+    getAudioSource(message) {
+      if (message.audio) {
+        var binaryAudioData = atob(message.audio);
+        var uint8AudioData = new Uint8Array(binaryAudioData.length);
+        for (var i = 0; i < binaryAudioData.length; i++) {
+          uint8AudioData[i] = binaryAudioData.charCodeAt(i);
+        }
+
+        return URL.createObjectURL(new Blob([uint8AudioData.buffer], { type: "audio/wav" }));
+      }
+    },
+    scrollMessageViewToBottom() {
+      nextTick(() => {
+        const messageView = document.querySelector(".messages");
+        if (messageView) {
+          messageView.scrollTop = messageView.scrollHeight;
+        }
+      });
+    },
+    clearChats() {
+      this.messagesStore.clearMessages();
+      this.messages.splice(0, this.messages.length);
+    },
+  },
+  watch: {
+    messages: {
+      handler() {
+        this.scrollMessageViewToBottom();
+      },
+      deep: false,
+    },
   },
 };
 </script>
@@ -171,10 +260,13 @@ export default {
     right: 25px;
   }
 }
+
 .messages {
   height: 100%;
-  max-height: 100%;
+  max-height: 55vh;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column; /* Newest items at the bottom */
 
   .avatar,
   .own {
@@ -186,6 +278,10 @@ export default {
     justify-content: flex-start;
     .message-box {
       background-color: #f2f2f2;
+    }
+
+    audio {
+      max-width: 100%;
     }
   }
 
@@ -201,6 +297,8 @@ export default {
     padding: 10px;
     border-radius: 10px;
     max-width: 80%;
+    margin-bottom: 10px;
+    word-wrap: break-word; /* Word wrapping for longer texts */
   }
 }
 
@@ -208,5 +306,38 @@ export default {
   display: flex;
   justify-content: center;
   margin: 10px 0;
+}
+
+.loader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 50px;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  background-color: #007bff; /* Bootstrap primary color */
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: pulse 1.5s infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 </style>

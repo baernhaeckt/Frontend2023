@@ -20,6 +20,8 @@ declare module 'vue' {
     BRow: typeof import('bootstrap-vue-next')['BRow']
     BSpinner: typeof import('bootstrap-vue-next')['BSpinner']
     Chat: typeof import('./src/components/Chat.vue')['default']
+    IMdiCog: typeof import('~icons/mdi/cog')['default']
+    IMdiTrashCanOutline: typeof import('~icons/mdi/trash-can-outline')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
