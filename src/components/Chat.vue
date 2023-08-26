@@ -87,7 +87,7 @@ export default {
             uint8AudioData[i] = binaryAudioData.charCodeAt(i);
           }
 
-          var audioBlob = new Blob([uint8AudioData], { type: "audio/mp3" });
+          var audioBlob = new Blob([uint8AudioData], { type: "audio/wav" });
           audio.src = URL.createObjectURL(audioBlob);
           audio.play();
         });
