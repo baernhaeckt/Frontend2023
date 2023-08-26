@@ -18,6 +18,7 @@
     <BRow class="flex-shrink-0">
       <BCol>
         <div class="input-message border rounded-3 p-3">
+        <audio id="audio" controls></audio>
           <BButton
             class="w-100"
             variant="primary"
@@ -45,7 +46,7 @@
 <script lang="ts">
 import {
   HubConnectionBuilder,
-  type IHttpConnectionOptions,
+  type IHttpConnectionOptions
 } from "@microsoft/signalr";
 import { ref } from "vue";
 const baseUrl = import.meta.env.VITE_SERVICES_BASEURL;
@@ -61,7 +62,7 @@ export default {
       { text: "Hello!", source: "avatar" },
       { text: "Hi there!", source: "own" },
       { text: "How are you?", source: "avatar" },
-      { text: "I'm fine, thanks!", source: "own" },
+      { text: "I'm fine, thanks!", source: "own" }
     ]);
 
     // Start the connection
@@ -69,16 +70,35 @@ export default {
       .start()
       .then(() => {
         console.log("WebSocket Connection started! 🎉");
+        connection.on("handshake", (response) => { console.log(response); });
+        connection.on(
+          "audioResponse",
+           (response) => { 
+              console.log(response);
+              var audio = document.getElementById('audio');
+              var binaryAudioData = atob(response.base64EncodedMp3);
+              var uint8AudioData = new Uint8Array(binaryAudioData.length);
+              for (var i = 0; i < binaryAudioData.length; i++) {
+                uint8AudioData[i] = binaryAudioData.charCodeAt(i);
+              }
+
+              var audioBlob = new Blob([uint8AudioData], { type: 'audio/mp3' });
+              audio.src = URL.createObjectURL(audioBlob);
+              audio.play(); 
+          });
+        connection.invoke("Handshake", "started")
+                .catch((err) => console.error(err));
       })
       .catch((err) => console.error(`Error while starting connection: ${err}`));
 
     return {
       isRecording: ref(false),
       mediaStream: null as MediaStream | null,
+      isClosing: ref(false),
+      isClosed: ref(false),
       mediaRecorder: null as MediaRecorder | null,
       connection: connection,
-
-      messages,
+      messages
     };
   },
   mounted() {
@@ -91,8 +111,11 @@ export default {
   methods: {
     startRecording() {
       this.isRecording = true;
+      this.isClosing = false;
+      this.isClosed = false;
+
       navigator.mediaDevices
-        .getUserMedia({ audio: true })
+        .getUserMedia({ audio: true, video: false })
         .then((stream) => {
           this.mediaStream = stream;
           this.mediaRecorder = new MediaRecorder(stream);
@@ -101,10 +124,22 @@ export default {
             const reader = new FileReader();
             reader.onload = () => {
               if (reader.readyState === 2) {
-                const arrayBuffer = reader.result;
+                const uint8Array = new Uint8Array(reader.result);
+                const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
+
                 this.connection
-                  .invoke("TransmitUserAudio", arrayBuffer)
+                  .invoke("TransmitUserAudio", base64String)
                   .catch((err) => console.error(err));
+              }
+
+              if (this.isClosing) {
+                  this.isClosed = true;
+                  this.isRecording = false;
+                  
+                  this.connection
+                      .invoke("CloseAudioStream")
+                      .catch((err) => console.error(err));
+                  this.mediaRecorder = null;
               }
             };
             reader.readAsArrayBuffer(event.data);
@@ -120,19 +155,15 @@ export default {
     stopRecording() {
       if (this.mediaRecorder) {
         this.mediaRecorder.stop();
+        this.isClosing = true;
       }
+
       if (this.mediaStream) {
         this.mediaStream.getTracks().forEach((track) => track.stop());
       }
-
-      this.connection
-        .invoke("CloseAudioStream")
-        .catch((err) => console.error(err));
-
-      this.isRecording = false;
-    },
-  },
-};
+    }
+  }
+}
 </script>
 
 <style lang="scss">
