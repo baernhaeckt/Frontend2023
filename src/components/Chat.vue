@@ -315,7 +315,11 @@ export default {
 <style lang="scss">
 .avatar-display {
   img {
-    max-height: 28vh;
+    max-height: 25vh;
+
+    @media (min-height: 800px) {
+      max-height: 30vh;
+    }
   }
 
   .modify-avatar {
@@ -335,10 +339,14 @@ export default {
 
 .messages {
   height: 100%;
-  max-height: 55vh;
+  max-height: 54vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column; /* Newest items at the bottom */
+
+  @media (min-height: 800px) {
+    max-height: 55vh;
+  }
 
   .avatar,
   .own {
