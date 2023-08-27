@@ -331,12 +331,15 @@ export default {
   overflow-y: auto;
   display: flex;
   flex-direction: column; /* Newest items at the bottom */
-  justify-content: flex-end;
 
   .avatar,
   .own {
     display: flex;
     margin: 10px 0;
+
+    &:first-child {
+      margin-top: auto;
+    }
   }
 
   .avatar {
