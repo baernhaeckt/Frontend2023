@@ -11,19 +11,20 @@
     <BRow class="messages-container flex-grow-1">
       <BCol class="pt-3">
         <div class="messages border rounded-3 px-3">
-          <div v-for="(message, index) in messages" :key="index" :class="message.source">
+          <div v-for="(message, index) in messages" :key="index" :class="[message.source, { 'is-error': message.isError ?? false }]">
             <div class="message-box">
-              {{ message.text }}
+              <i-mdi-alert-circle-outline class="mb-1" v-if="message.isError" /> {{ message.text }}
               <template v-if="message.audio">
                 <hr />
                 <audio controls :id="`MessageAudio${message.messageId}`">
                   <source :src="getAudioSource(message)" type="audio/wav" />
                 </audio>
               </template>
+              <span class="timestamp" v-if="message.timestamp">{{ message.timestamp }}</span>
             </div>
           </div>
           <div class="avatar" v-if="isLoadingMessage">
-            <div class="message-box">
+            <div class="message-box loader-box">
               <div class="loader">
                 <div class="dot"></div>
                 <div class="dot"></div>
@@ -90,6 +91,7 @@ export default {
     const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
     const messages: Ref<MessageModel[]> = ref([...messagesStore.messages]);
     const isLoadingMessage = ref(false);
+    const getServerMessageTimeout = ref(null);
 
     // Start the connection
     connection
@@ -100,7 +102,9 @@ export default {
           console.log(response);
         });
         connection.on("audioResponse", (response) => {
-          console.log(response);
+          if (getServerMessageTimeout.value) {
+            clearTimeout(getServerMessageTimeout.value);
+          }
 
           const ownMessageId = messages.value.length;
           const avatarMessageId = ownMessageId + 1;
@@ -109,14 +113,14 @@ export default {
             messageId: ownMessageId,
             text: response.understoodText,
             source: "own",
-            timestamp: new Date(),
+            timestamp: new Date().toLocaleTimeString().substring(0, 5),
           };
           const avatarMessage: MessageModel = {
             messageId: avatarMessageId,
             text: response.answerText,
             source: "avatar",
             audio: response.base64EncodedMp3,
-            timestamp: new Date(),
+            timestamp: new Date().toLocaleTimeString().substring(0, 5),
           };
 
           messages.value.push(ownMessage);
@@ -146,6 +150,7 @@ export default {
       connection: connection,
       messages,
       isLoadingMessage,
+      getServerMessageTimeout,
     };
   },
   mounted() {
@@ -184,12 +189,13 @@ export default {
                       this.mediaRecorder = null;
                       this.isLoadingMessage = true;
                       this.scrollMessageViewToBottom();
+                      this.startMessageLoadingGuard();
                     }
                   });
               }
             };
+
             reader.readAsArrayBuffer(event.data);
-            console.log(event.data);
           };
 
           this.mediaRecorder.start(1000); // Emit audio data every 1000ms (1s)
@@ -211,9 +217,6 @@ export default {
     modifyAvatar() {
       this.$emit("edit-avatar");
     },
-    audioChanged(e) {
-      console.log("audio changed", e);
-    },
     getAudioSource(message) {
       if (message.audio) {
         var binaryAudioData = atob(message.audio);
@@ -232,6 +235,20 @@ export default {
           messageView.scrollTop = messageView.scrollHeight;
         }
       });
+    },
+    startMessageLoadingGuard() {
+      this.getServerMessageTimeout = setTimeout(() => {
+        this.isLoadingMessage = false;
+        this.messages.push({
+          messageId: this.messages.length,
+          text: "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.",
+          source: "avatar",
+          timestamp: new Date().toLocaleTimeString().substring(0, 5),
+          isError: true,
+        });
+
+        this.scrollMessageViewToBottom();
+      }, 30000);
     },
     clearChats() {
       this.messagesStore.clearMessages();
@@ -282,6 +299,7 @@ export default {
     }
 
     audio {
+      width: 100%;
       max-width: 100%;
     }
   }
@@ -300,6 +318,26 @@ export default {
     max-width: 80%;
     margin-bottom: 10px;
     word-wrap: break-word; /* Word wrapping for longer texts */
+
+    position: relative;
+    padding-bottom: calc(10px + 1.7em);
+
+    .timestamp {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+    }
+
+    &.loader-box {
+      padding-bottom: 10px;
+    }
+  }
+
+  .is-error {
+    .message-box {
+      color: var(--bs-alert-color);
+      background-color: var(--bs-danger-bg-subtle);
+    }
   }
 }
 

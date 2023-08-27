@@ -3,5 +3,6 @@ export interface MessageModel {
     text: string;
     source: string;
     audio?: Uint8Array;
-    timestamp: Date;
+    timestamp: string;
+    isError?: boolean;
 }

@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AvatarSelection: typeof import('./src/components/AvatarSelection.vue')['default']
+    BAlert: typeof import('bootstrap-vue-next')['BAlert']
     BButton: typeof import('bootstrap-vue-next')['BButton']
     BCol: typeof import('bootstrap-vue-next')['BCol']
     BContainer: typeof import('bootstrap-vue-next')['BContainer']
@@ -20,6 +21,7 @@ declare module 'vue' {
     BRow: typeof import('bootstrap-vue-next')['BRow']
     BSpinner: typeof import('bootstrap-vue-next')['BSpinner']
     Chat: typeof import('./src/components/Chat.vue')['default']
+    IMdiAlertCircleOutline: typeof import('~icons/mdi/alert-circle-outline')['default']
     IMdiCog: typeof import('~icons/mdi/cog')['default']
     IMdiTrashCanOutline: typeof import('~icons/mdi/trash-can-outline')['default']
     Loader: typeof import('./src/components/Loader.vue')['default']
