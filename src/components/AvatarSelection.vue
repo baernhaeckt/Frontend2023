@@ -122,6 +122,7 @@ export default {
     },
     async initializeAvatar() {
       this.isLoading = true;
+      this.enableLoadingGuard();
       const data = await this.avatarService.loadRandomAvatar();
       this.storeAvatarAndConfiguration(data);
 
@@ -129,6 +130,7 @@ export default {
     },
     async updateAvatar() {
       this.isLoading = true;
+      this.enableLoadingGuard();
       const data = await this.avatarService.loadAvatar(
         this.currentAvatarConfiguration.hairId,
         this.currentAvatarConfiguration.hairColorId,
@@ -140,6 +142,13 @@ export default {
       this.storeAvatarAndConfiguration(data);
 
       this.isLoading = false;
+    },
+    enableLoadingGuard() {
+      setTimeout(() => {
+        if (this.isLoading) {
+          this.isLoading = false;
+        }
+      }, 6000);
     },
   },
 };
