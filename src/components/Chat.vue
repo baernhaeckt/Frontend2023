@@ -141,12 +141,14 @@ export default {
           const ownMessageId = messages.value.length;
           const avatarMessageId = ownMessageId + 1;
 
+          const haveOwnMessage = response.understoodText && response.understoodText.length > 0;
           const ownMessage: MessageModel = {
             messageId: ownMessageId,
             text: response.understoodText,
             source: "own",
             timestamp: new Date().toLocaleTimeString().substring(0, 5),
           };
+
           const avatarMessage: MessageModel = {
             messageId: avatarMessageId,
             text: response.answerText,
@@ -155,10 +157,16 @@ export default {
             timestamp: new Date().toLocaleTimeString().substring(0, 5),
           };
 
-          messages.value.push(ownMessage);
+          if (haveOwnMessage) {
+            messages.value.push(ownMessage);
+          }
+
           messages.value.push(avatarMessage);
 
-          messagesStore.pushMessage(ownMessage);
+          if (haveOwnMessage) {
+            messagesStore.pushMessage(ownMessage);
+          }
+
           messagesStore.pushMessage(avatarMessage);
 
           playAudio(avatarMessageId);
