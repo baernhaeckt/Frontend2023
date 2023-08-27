@@ -62,8 +62,8 @@
             Drücke zum sprechen...
           </BButton>
           <BButton class="flex-grow-1" :disabled="isLoadingMessage" variant="secondary" size="lg" v-if="isRecording || isLoadingMessage" @click="stopRecording">
-            <template v-if="!isLoadingMessage">Drücke um Nachricht abzusenden...</template>
-            <template v-else>Die Nachricht wird übermittelt...</template>
+            <template v-if="!isLoadingMessage">Nachricht senden...</template>
+            <template v-else>Nachricht übermittlung...</template>
           </BButton>
         </div>
       </BCol>
