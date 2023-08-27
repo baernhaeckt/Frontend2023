@@ -127,10 +127,6 @@ export default {
 
           setTimeout(() => {
             const relatedMessage = messages.value[messages.value.length - 2];
-            console.log(response.predicted_classes);
-            console.log(relatedMessage);
-            console.log(emotions);
-
             relatedMessage.emotions = emotions;
             messagesStore.updateEmotions(relatedMessage.messageId, emotions);
           }, 750);
@@ -139,6 +135,8 @@ export default {
           if (getServerMessageTimeout.value) {
             clearTimeout(getServerMessageTimeout.value);
           }
+
+          isLoadingMessage.value = false;
 
           const ownMessageId = messages.value.length;
           const avatarMessageId = ownMessageId + 1;
@@ -164,7 +162,6 @@ export default {
           messagesStore.pushMessage(avatarMessage);
 
           playAudio(avatarMessageId);
-          isLoadingMessage.value = false;
         });
         connection.invoke("Handshake", "started").catch((err) => console.error(err));
       })
@@ -272,6 +269,13 @@ export default {
     },
     startMessageLoadingGuard() {
       this.getServerMessageTimeout = setTimeout(() => {
+        if (this.getServerMessageTimeout === null || !this.isLoadingMessage) {
+          this.getServerMessageTimeout = null;
+          return;
+        }
+
+        this.getServerMessageTimeout = null;
+
         this.isLoadingMessage = false;
         this.messages.push({
           messageId: this.messages.length,
@@ -282,7 +286,7 @@ export default {
         });
 
         this.scrollMessageViewToBottom();
-      }, 30000);
+      }, 20000);
     },
     clearChats() {
       this.messagesStore.clearMessages();
