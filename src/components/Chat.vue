@@ -371,6 +371,7 @@ export default {
 
     &.loader-box {
       padding-bottom: 10px;
+      min-width: 0;
     }
   }
 
