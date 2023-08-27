@@ -4,7 +4,7 @@
       <div :class="[{ 'loader-backdrop': isLoading }]" class="d-flex flex-column min-vh-100">
         <Loader v-if="isLoading" type="border" variant="primary" label="Loading..." class="z-2" />
         <BCol cols="12" class="d-flex justify-content-center mt-3 flex-shrink-0 border rounded-3 z-0 avatar-image-container">
-          <img :src="avatar" class="rounded-3" alt="Dein Avatar" />
+          <img :src="avatar" class="rounded-3 avatar-image" alt="Dein Avatar" />
         </BCol>
         <BCol cols="12" class="d-flex flex-column justify-content-center mt-3 mb-3 p-3 flex-grow-1 border rounded-3 z-0">
           <div class="avatar-configurator row mx-auto">
@@ -171,6 +171,12 @@ export default {
 }
 .avatar-image-container {
   max-height: 30vh;
+
+  background: radial-gradient(farthest-side, rgba(255, 255, 255, 0.5) 50%, rgba(255, 31, 39, 0.05) 100%);
+
+  .avatar-image {
+    mix-blend-mode: multiply;
+  }
 }
 .avatar-configurator {
   max-width: 750px;

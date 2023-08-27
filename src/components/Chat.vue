@@ -3,7 +3,7 @@
     <BRow class="flex-shrink-1">
       <BCol class="pt-3 avatar-display">
         <div class="avatar border rounded-3 px-3 d-flex justify-content-center">
-          <img :src="avatar" class="rounded-3 flex-grow-0" alt="Dein Avatar" />
+          <img :src="avatar" class="rounded-3 flex-grow-0 avatar-image" alt="Dein Avatar" />
           <BButton variant="light" size="lg" class="modify-avatar" @click="modifyAvatar"><i-mdi-cog class="mb-1" /></BButton>
         </div>
       </BCol>
@@ -314,6 +314,14 @@ export default {
     position: absolute;
     top: 25px;
     right: 25px;
+  }
+
+  .avatar {
+    background: radial-gradient(farthest-side, rgba(255, 255, 255, 0.5) 50%, rgba(255, 31, 39, 0.05) 100%);
+
+    .avatar-image {
+      mix-blend-mode: multiply;
+    }
   }
 }
 
