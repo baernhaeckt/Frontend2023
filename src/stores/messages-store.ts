@@ -26,6 +26,15 @@ export const useMessagesStore = defineStore(STORE_NAME, {
 
             localStorage.setItem(MESSAGES_LOCAL_STORAGE_KEY, JSON.stringify(this.messages))
         },
+        updateEmotions(messageId: number, emotions: { name: string, emojiHtml: string }[]) {
+            const message = this.messages.find(m => m.messageId === messageId)
+
+            if (message) {
+                message.emotions = emotions
+
+                localStorage.setItem(MESSAGES_LOCAL_STORAGE_KEY, JSON.stringify(this.messages))
+            }
+        },
         clearMessages() {
             this.messages.slice(0, this.messages.length)
 

@@ -3,6 +3,7 @@ export interface MessageModel {
     text: string;
     source: string;
     audio?: Uint8Array;
+    emotions?: { name: string, emojiHtml: string }[];
     timestamp: string;
     isError?: boolean;
 }

@@ -20,7 +20,17 @@
                   <source :src="getAudioSource(message)" type="audio/wav" />
                 </audio>
               </template>
-              <span class="timestamp" v-if="message.timestamp">{{ message.timestamp }}</span>
+              <small class="emotions t-small" v-if="message.emotions && message.emotions.length">
+                Erkannte Emotionen:
+                <span
+                  v-for="(emotion, index) in message.emotions.filter((e) => e)"
+                  :key="index"
+                  class="emotion"
+                  :title="emotion.name"
+                  v-html="emotion.emojiHtml"
+                ></span>
+              </small>
+              <small class="timestamp" v-if="message.timestamp">{{ message.timestamp }}</small>
             </div>
           </div>
           <div class="avatar" v-if="isLoadingMessage">
@@ -88,6 +98,16 @@ export default {
       }, 125);
     }
 
+    const emotionsClassMap = {
+      anger: { name: "wütend", emojiHtml: "&#128545;" },
+      anxiety: { name: "ängstlich", emojiHtml: "&#128552;" },
+      boredom: { name: "gelangweilt", emojiHtml: "&#128529;" },
+      disgust: { name: "angewidert", emojiHtml: "&#128565;" },
+      happiness: { name: "glücklich", emojiHtml: "&#128512;" },
+      neutral: { name: "neutral", emojiHtml: "&#128528;" },
+      sadness: { name: "traurig", emojiHtml: "&#128546;" },
+    };
+
     const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
     const messages: Ref<MessageModel[]> = ref([...messagesStore.messages]);
     const isLoadingMessage = ref(false);
@@ -100,6 +120,20 @@ export default {
         console.log("WebSocket Connection started! 🎉");
         connection.on("handshake", (response) => {
           console.log(response);
+        });
+        connection.on("emotions", (response) => {
+          const predictedEmotions = response.predicted_classes;
+          const emotions = predictedEmotions.map((emotion) => emotionsClassMap[emotion]);
+
+          setTimeout(() => {
+            const relatedMessage = messages.value[messages.value.length - 2];
+            console.log(response.predicted_classes);
+            console.log(relatedMessage);
+            console.log(emotions);
+
+            relatedMessage.emotions = emotions;
+            messagesStore.updateEmotions(relatedMessage.messageId, emotions);
+          }, 750);
         });
         connection.on("audioResponse", (response) => {
           if (getServerMessageTimeout.value) {
@@ -316,6 +350,7 @@ export default {
     padding: 10px;
     border-radius: 10px;
     max-width: 80%;
+    min-width: 250px;
     margin-bottom: 10px;
     word-wrap: break-word; /* Word wrapping for longer texts */
 
@@ -326,6 +361,12 @@ export default {
       position: absolute;
       bottom: 10px;
       right: 10px;
+    }
+
+    .emotions {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
     }
 
     &.loader-box {
