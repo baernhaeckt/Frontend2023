@@ -127,8 +127,10 @@ export default {
 
           setTimeout(() => {
             const relatedMessage = messages.value[messages.value.length - 2];
-            relatedMessage.emotions = emotions;
-            messagesStore.updateEmotions(relatedMessage.messageId, emotions);
+            if (relatedMessage) {
+              relatedMessage.emotions = emotions;
+              messagesStore.updateEmotions(relatedMessage.messageId, emotions);
+            }
           }, 750);
         });
         connection.on("audioResponse", (response) => {
