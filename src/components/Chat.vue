@@ -315,7 +315,7 @@ export default {
 <style lang="scss">
 .avatar-display {
   img {
-    max-height: 30vh;
+    max-height: 28vh;
   }
 
   .modify-avatar {
