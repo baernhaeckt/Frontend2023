@@ -13,6 +13,7 @@
     "@microsoft/signalr": "^7.0.10",
     "bootstrap": "^5.3.1",
     "bootstrap-vue-next": "^0.10.10",
+    "idb": "^7.1.1",
     "pinia": "^2.1.6",
     "vite-plugin-mkcert": "^1.16.0",
     "vue": "^3.3.4",

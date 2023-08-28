@@ -1,70 +1,65 @@
-import type { MessageModel } from '../models/message-model'
-import { defineStore } from 'pinia'
+import type { MessageModel } from '../models/message-model';
+import { defineStore } from 'pinia';
+import { openDB } from 'idb';
 
-const STORE_NAME = 'messages'
-const MESSAGES_LOCAL_STORAGE_KEY = 'messages'
-const MESSAGES_META_KEY = 'message_meta'
+const STORE_NAME = 'messages';
+const MESSAGES_DB_NAME = 'messagesDB';
+const MESSAGES_STORE_NAME = 'messagesStore';
 
-const getMessages = () => {
-  const meta = localStorage.getItem(MESSAGES_META_KEY)
-  const messages = []
+// Initialize the database
+const initDB = async () => {
+  return openDB(MESSAGES_DB_NAME, 1, {
+    upgrade(db) {
+      db.createObjectStore(MESSAGES_STORE_NAME, { keyPath: 'messageId' });
+    },
+  });
+};
 
-  if (meta) {
-    const metaObj = JSON.parse(meta)
-
-    for (const id of metaObj.ids) {
-      const item = localStorage.getItem(`${MESSAGES_LOCAL_STORAGE_KEY}_${id}`)
-      if (item) {
-        messages.push(JSON.parse(item))
-      }
-    }
-  }
-
-  return messages
-}
+// Get messages from IndexedDB
+const getMessages = async () => {
+  const db = await initDB();
+  const messages = await db.getAll(MESSAGES_STORE_NAME);
+  return messages || [];
+};
 
 export const useMessagesStore = defineStore(STORE_NAME, {
   state: () => ({
-    messages: getMessages(),
+    messages: [] as MessageModel[],  // Start empty, will populate asynchronously
   }),
   actions: {
-    pushMessage(message: MessageModel) {
-      this.messages.push(message)
-
-      // Store each message under a separate key
-      localStorage.setItem(`${MESSAGES_LOCAL_STORAGE_KEY}_${message.messageId}`, JSON.stringify(message))
-
-      // Update meta information
-      const meta = localStorage.getItem(MESSAGES_META_KEY) || JSON.stringify({ ids: [] })
-      const metaObj = JSON.parse(meta)
-      metaObj.ids.push(message.messageId)
-      localStorage.setItem(MESSAGES_META_KEY, JSON.stringify(metaObj))
+    async init() {
+      this.messages = await getMessages();
     },
-    updateEmotions(messageId: number, emotions: { name: string, emojiHtml: string }[]) {
-      const message = this.messages.find(m => m.messageId === messageId)
-
+    async pushMessage(message: MessageModel) {
+      this.messages.push(message);
+      const db = await initDB();
+      await db.put(MESSAGES_STORE_NAME, message);
+    },
+    async updateEmotions(messageId: number, emotions: { name: string, emojiHtml: string }[]) {
+      const message = this.messages.find(m => m.messageId === messageId);
       if (message) {
-        message.emotions = emotions
+        message.emotions = emotions;
 
-        // Update the individual message in local storage
-        localStorage.setItem(`${MESSAGES_LOCAL_STORAGE_KEY}_${messageId}`, JSON.stringify(message))
-      }
-    },
-    clearMessages() {
-      // Clear messages array
-      this.messages.length = 0
-
-      // Remove items from local storage
-      const meta = localStorage.getItem(MESSAGES_META_KEY)
-      if (meta) {
-        const metaObj = JSON.parse(meta)
-        for (const id of metaObj.ids) {
-          localStorage.removeItem(`${MESSAGES_LOCAL_STORAGE_KEY}_${id}`)
+        const db = await initDB();
+        const dbMessage : MessageModel = await db.get(MESSAGES_STORE_NAME, messageId);
+        if (dbMessage) {
+          dbMessage.emotions = emotions;
+          await db.put(MESSAGES_STORE_NAME, dbMessage);
         }
       }
-
-      // Clear the meta key
-      localStorage.removeItem(MESSAGES_META_KEY)
     },
+    async clearMessages() {
+      this.messages = [];
+      const db = await initDB();
+      await db.clear(MESSAGES_STORE_NAME);
+    },
+    async removeMessageById(messageId: number) {
+      const index = this.messages.findIndex(m => m.messageId === messageId);
+      if (index !== -1) {
+        this.messages.splice(index, 1);
+        const db = await initDB();
+        await db.delete(MESSAGES_STORE_NAME, messageId);
+      }
+    }
   },
-})
+});

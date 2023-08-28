@@ -109,7 +109,7 @@ export default {
     };
 
     const connection = new HubConnectionBuilder().withUrl(`${baseUrl}/audiohub`).build();
-    const messages: Ref<MessageModel[]> = ref([...messagesStore.messages]);
+    const messages: Ref<MessageModel[]> = ref([]);
     const isLoadingMessage = ref(false);
     const getServerMessageTimeout = ref(null);
 
@@ -125,15 +125,15 @@ export default {
           const predictedEmotions = response.predicted_classes;
           const emotions = predictedEmotions.map((emotion) => emotionsClassMap[emotion]);
 
-          setTimeout(() => {
+          setTimeout(async () => {
             const relatedMessage = messages.value[messages.value.length - 2];
             if (relatedMessage) {
               relatedMessage.emotions = emotions;
-              messagesStore.updateEmotions(relatedMessage.messageId, emotions);
+              await messagesStore.updateEmotions(relatedMessage.messageId, emotions);
             }
           }, 750);
         });
-        connection.on("audioResponse", (response) => {
+        connection.on("audioResponse", async (response) => {
           if (getServerMessageTimeout.value) {
             clearTimeout(getServerMessageTimeout.value);
           }
@@ -166,10 +166,10 @@ export default {
           messages.value.push(avatarMessage);
 
           if (haveOwnMessage) {
-            messagesStore.pushMessage(ownMessage);
+            await messagesStore.pushMessage(ownMessage);
           }
 
-          messagesStore.pushMessage(avatarMessage);
+          await messagesStore.pushMessage(avatarMessage);
 
           playAudio(avatarMessageId);
         });
@@ -194,7 +194,10 @@ export default {
       getServerMessageTimeout,
     };
   },
-  mounted() {
+  async mounted() {
+    await this.messagesStore.init();
+    this.messages.push(...this.messagesStore.messages);
+
     this.scrollMessageViewToBottom();
   },
   methods: {
